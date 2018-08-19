@@ -1,0 +1,5 @@
+rootProject.name = 'summer'
+
+include 'summer-core'
+include 'summer-mvc'
+include 'summer-example'

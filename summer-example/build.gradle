@@ -1,0 +1,4 @@
+dependencies {
+    compile project(':summer-core')
+    compile project(':summer-mvc')
+}
