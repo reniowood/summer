@@ -1,4 +1,4 @@
-package com.jinhyuk.summer_example.components;
+package com.jinhyuk.summer_core.test_application.have_mutual_dependencies.components;
 
 import com.jinhuyk.summer_core.annotations.Autowired;
 import com.jinhuyk.summer_core.annotations.Component;
@@ -7,8 +7,4 @@ import com.jinhuyk.summer_core.annotations.Component;
 public class ComponentA {
     @Autowired
     private ComponentB componentB;
-
-    public String name() {
-        return componentB.name();
-    }
 }
