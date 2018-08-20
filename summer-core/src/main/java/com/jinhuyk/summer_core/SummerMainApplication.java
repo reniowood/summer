@@ -58,8 +58,7 @@ public class SummerMainApplication {
             }
 
             try {
-                Constructor<?> constructor = aClass.getDeclaredConstructor();
-                constructor.setAccessible(true);
+                Constructor<?> constructor = aClass.getConstructor();
                 components.put(componentName, constructor.newInstance());
                 dependencyMap.put(componentName, new HashSet<>());
             } catch (InstantiationException e) {
