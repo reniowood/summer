@@ -82,4 +82,15 @@ public class SummerMainApplicationTest {
     public void test_thereShouldNotBeMutualDependencies() {
         com.jinhyuk.summer_core.test_application.have_mutual_dependencies.SummerTestApplication.main(new String[] {});
     }
+
+    @Test
+    public void test_applicationCanGetComponentByClass() {
+        com.jinhyuk.summer_core.test_application.have_dependencies.SummerTestApplication.main(new String[] {});
+
+        ComponentA componentA = SummerMainApplication.getComponent(ComponentA.class);
+        Assert.assertNotNull(componentA);
+
+        ComponentC componentC = SummerMainApplication.getComponent(ComponentC.class);
+        Assert.assertNotNull(componentC);
+    }
 }

@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SummerMainApplication {
     private static Map<String, Object> components = new ConcurrentHashMap<>();
+    private static Map<Class<?>, String> classNameMap = new ConcurrentHashMap<>();
     private static Map<String, Set<String>> dependencyMap = new ConcurrentHashMap<>();
 
     public static void run(Class applicationClass) {
@@ -32,6 +33,15 @@ public class SummerMainApplication {
             return components.get(name);
         } else {
             throw new RuntimeException(String.format("Component %s is not found.", name));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T getComponent(Class<T> tClass) {
+        if (classNameMap.containsKey(tClass)) {
+            return (T) getComponent(classNameMap.get(tClass));
+        } else {
+            throw new RuntimeException(String.format("Component %s is not found.", tClass.getName()));
         }
     }
 
@@ -60,6 +70,7 @@ public class SummerMainApplication {
             try {
                 Constructor<?> constructor = aClass.getConstructor();
                 components.put(componentName, constructor.newInstance());
+                classNameMap.put(aClass, componentName);
                 dependencyMap.put(componentName, new HashSet<>());
             } catch (InstantiationException e) {
                 throw new RuntimeException(String.format("Component %s cannot be initiated.", componentName));
