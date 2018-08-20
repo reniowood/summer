@@ -1,7 +1,6 @@
 package com.jinhyuk.summer_core;
 
 import com.jinhuyk.summer_core.SummerMainApplication;
-import com.jinhuyk.summer_core.annotations.Autowired;
 import com.jinhyuk.summer_core.test_application.have_dependencies.components.ComponentA;
 import com.jinhyuk.summer_core.test_application.have_dependencies.components.ComponentB;
 import com.jinhyuk.summer_core.test_application.have_dependencies.components.ComponentC;
@@ -70,7 +69,7 @@ public class SummerMainApplicationTest {
 
         Assert.assertTrue(components.containsKey("ComponentC"));
         ComponentC componentC = (ComponentC) components.get("ComponentC");
-        Assert.assertEquals(components.get("ComponentD"), componentB.componentD);
+        Assert.assertEquals(components.get("ComponentD"), componentC.componentD);
 
         Assert.assertTrue(dependencyMap.containsKey("ComponentC"));
         Assert.assertTrue(dependencyMap.get("ComponentC").contains("ComponentD"));
