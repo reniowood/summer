@@ -5,11 +5,14 @@ import com.jinhuyk.summer_core.annotations.Component;
 
 @Component
 public class ComponentA {
-    @Autowired
     public ComponentB componentB;
+    public ComponentC componentC;
 
     @Autowired
-    public ComponentC componentC;
+    public ComponentA(ComponentB componentB, ComponentC componentC) {
+        this.componentB = componentB;
+        this.componentC = componentC;
+    }
 
     public ComponentD componentD;
 }
