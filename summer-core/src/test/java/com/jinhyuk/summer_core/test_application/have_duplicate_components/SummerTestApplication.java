@@ -1,6 +1,5 @@
 package com.jinhyuk.summer_core.test_application.have_duplicate_components;
 
-import com.jinhuyk.summer_core.SummerMainApplication;
 import com.jinhuyk.summer_core.annotations.Component;
 import com.jinhuyk.summer_core.annotations.SummerApplication;
 
@@ -10,8 +9,4 @@ public class SummerTestApplication {
     private class A {}
     @Component(name = "X")
     private class B {}
-
-    public static void main(String[] args) {
-        SummerMainApplication.run(SummerTestApplication.class);
-    }
 }
