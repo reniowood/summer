@@ -1,22 +1,21 @@
 package com.jinhuyk.summer_core.context;
 
+import com.google.common.collect.ImmutableMap;
 import com.jinhuyk.summer_core.annotations.Autowired;
 import com.jinhuyk.summer_core.annotations.Component;
+import com.jinhuyk.summer_core.annotations.Configuration;
+import com.jinhuyk.summer_core.components.*;
 import org.reflections.Reflections;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Parameter;
+import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultApplicationContext implements ApplicationContext {
     private final String basePackageName;
 
-    private Map<String, Object> components = new ConcurrentHashMap<>();
-    private Map<Class<?>, String> classNameMap = new ConcurrentHashMap<>();
-    private Map<String, Class<?>> nameClassMap = new ConcurrentHashMap<>();
+    private Map<String, AbstractComponent<?>> nameComponentMap = new HashMap<>();
+    private Map<Class<?>, AbstractComponent<?>> classComponentMap = new HashMap<>();
 
     private DefaultApplicationContext(Class applicationClass) {
         this.basePackageName = applicationClass.getPackage().getName();
@@ -33,37 +32,41 @@ public class DefaultApplicationContext implements ApplicationContext {
 
     @Override
     public Object getComponent(String name) {
-        if (components.containsKey(name)) {
-            return components.get(name);
+        if (nameComponentMap.containsKey(name)) {
+            return nameComponentMap.get(name);
         } else {
-            throw new RuntimeException(String.format("Component %s is not found.", name));
+            throw new RuntimeException(String.format("AbstractComponent %s is not found.", name));
         }
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getComponent(Class<T> tClass) {
-        if (classNameMap.containsKey(tClass)) {
-            return (T) getComponent(classNameMap.get(tClass));
+        if (classComponentMap.containsKey(tClass)) {
+            return (T) classComponentMap.get(tClass).getObject();
         } else {
-            throw new RuntimeException(String.format("Component %s is not found.", tClass.getName()));
+            throw new RuntimeException(String.format("AbstractComponent %s is not found.", tClass.getName()));
         }
+    }
+
+    @Override
+    public Map<String, Object> getComponents() {
+        Map<String, Object> components = new HashMap<>();
+
+        for (String name : nameComponentMap.keySet()) {
+            AbstractComponent<?> component = nameComponentMap.get(name);
+
+            components.put(name, component.getObject());
+        }
+
+        return ImmutableMap.copyOf(components);
     }
 
     private void scanComponents() {
         scanComponentAnnotatedClasses();
-
-        Map<String, List<String>> dependencyGraph = new HashMap<>();
-        Map<String, List<String>> reverseDependencyGraph = new HashMap<>();
-        Map<String, Constructor<?>> constructorMap = new HashMap<>();
-        Map<String, List<String>> parametersMap = new HashMap<>();
-        for (String componentName : nameClassMap.keySet()) {
-            dependencyGraph.put(componentName, new ArrayList<>());
-            reverseDependencyGraph.put(componentName, new ArrayList<>());
-        }
-
-        createDependencyGraph(dependencyGraph, reverseDependencyGraph, constructorMap, parametersMap);
-        createComponentsWithDependencies(dependencyGraph, reverseDependencyGraph, constructorMap, parametersMap);
+        scanConfigurations();
+        findDependencies();
+        createComponentsWithDependencies();
     }
 
     private void scanComponentAnnotatedClasses() {
@@ -72,144 +75,100 @@ public class DefaultApplicationContext implements ApplicationContext {
         for (Class<?> componentClass : reflections.getTypesAnnotatedWith(Component.class)) {
             String componentName = getComponentNameFromComponentAnnotation(componentClass);
 
-            if (nameClassMap.containsKey(componentName)) {
-                throw new RuntimeException(String.format("Application has components with duplicate names: %s", componentName));
+            if (nameComponentMap.containsKey(componentName)) {
+                throw new RuntimeException(String.format("Application has nameComponentMap with duplicate names: %s", componentName));
             }
 
-            nameClassMap.put(componentName, componentClass);
-            classNameMap.put(componentClass, componentName);
+            createConstructorCreatableComponent(componentName, componentClass);
         }
     }
 
-    private void createDependencyGraph(Map<String, List<String>> dependencyGraph,
-                                       Map<String, List<String>> reverseDependencyGraph,
-                                       Map<String, Constructor<?>> constructorMap,
-                                       Map<String, List<String>> parametersMap) {
-        for (String componentName : nameClassMap.keySet()) {
-            Class<?> componentClass = nameClassMap.get(componentName);
+    private void scanConfigurations() {
+        Reflections reflections = new Reflections(this.basePackageName);
 
-            if (componentClass.getConstructors().length == 0) {
-                throw new RuntimeException(String.format("Component %s doesn't have any public constructor.", componentName));
-            } else {
-                if (hasMoreThanOneAutowiredConstructor(componentClass)) {
-                    throw new RuntimeException(String.format("Component %s has more than one public constructor with @Autowired.", componentName));
+        for (Class<?> configurationClass : reflections.getTypesAnnotatedWith(Configuration.class)) {
+            String configurationName = configurationClass.getSimpleName();
+
+            if (nameComponentMap.containsKey(configurationName)) {
+                throw new RuntimeException(String.format("Application has nameComponentMap with duplicate names: %s", configurationName));
+            }
+
+            AbstractComponent<?> configurationComponent = createConstructorCreatableComponent(configurationName, configurationClass);
+            scanBeans(configurationClass, configurationComponent);
+        }
+    }
+
+    private void scanBeans(Class<?> configurationClass, AbstractComponent<?> configurationComponent) {
+        for (Method method : configurationClass.getMethods()) {
+            if (method.isAnnotationPresent(Component.class)) {
+                Component componentAnnotation = method.getAnnotation(Component.class);
+
+                String componentName = getComponentNameFromComponentAnnotation(componentAnnotation.getClass());
+
+                if (nameComponentMap.containsKey(componentName)) {
+                    throw new RuntimeException(String.format("Application has nameComponentMap with duplicate names: %s", componentName));
                 }
 
-                List<Constructor<?>> constructors = getAutowiredConstructors(componentClass);
-
-                for (Constructor<?> constructor : constructors) {
-                    List<String> parameters = new ArrayList<>();
-
-                    for (Parameter parameter : constructor.getParameters()) {
-                        Class<?> parameterClass = parameter.getType();
-
-                        if (classNameMap.containsKey(parameterClass)) {
-                            String parameterComponentName = classNameMap.get(parameterClass);
-                            parameters.add(parameterComponentName);
-
-                            List<String> dependencies = dependencyGraph.get(componentName);
-                            dependencies.add(parameterComponentName);
-                            dependencyGraph.put(componentName, dependencies);
-
-                            List<String> reverseDependencies = reverseDependencyGraph.get(parameterComponentName);
-                            reverseDependencies.add(componentName);
-                            reverseDependencyGraph.put(parameterComponentName, reverseDependencies);
-                        } else {
-                            throw new RuntimeException(String.format("Component %s has a non-component parameter within constructor: %s", componentName, parameter.getType().getSimpleName()));
-                        }
-                    }
-
-                    constructorMap.put(componentName, constructor);
-                    parametersMap.put(componentName, parameters);
-                }
-
-                for (Field field : componentClass.getDeclaredFields()) {
-                    if (field.isAnnotationPresent(Autowired.class)) {
-                        Autowired autowiredAnnotation = field.getAnnotation(Autowired.class);
-                        String dependentComponentName = autowiredAnnotation.name().isEmpty() ? field.getType().getSimpleName() : autowiredAnnotation.name();
-
-                        if (nameClassMap.containsKey(dependentComponentName)) {
-                            List<String> dependencies = dependencyGraph.get(dependentComponentName);
-                            dependencies.add(componentName);
-                            dependencyGraph.put(dependentComponentName, dependencies);
-
-                            List<String> reverseDependencies = reverseDependencyGraph.get(componentName);
-                            reverseDependencies.add(dependentComponentName);
-                            reverseDependencyGraph.put(componentName, reverseDependencies);
-                        } else {
-                            throw new RuntimeException(String.format("Component %s has a non-component field: %s", componentName, dependentComponentName));
-                        }
-                    }
-                }
+                createMethodCreatableComponent(componentName, method, configurationComponent);
             }
         }
     }
 
-    private static List<Constructor<?>> getAutowiredConstructors(Class<?> componentClass) {
-        Constructor<?>[] constructors = componentClass.getConstructors();
-
-        if (constructors.length == 1) {
-            return Collections.singletonList(constructors[0]);
-        }
-
-        List<Constructor<?>> autowiredConstructors = new ArrayList<>();
-
-        for (Constructor<?> constructor : constructors) {
-            if (constructor.isAnnotationPresent(Autowired.class)) {
-                autowiredConstructors.add(constructor);
-            }
-        }
-
-        return autowiredConstructors;
+    private ConstructorCreatableComponent<?> createConstructorCreatableComponent(String componentName, Class<?> componentClass) {
+        ConstructorCreatableComponent<?> component = new ConstructorCreatableComponent<>(componentClass, componentName);
+        nameComponentMap.put(componentName, component);
+        classComponentMap.put(componentClass, component);
+        return component;
     }
 
-    private static boolean hasMoreThanOneAutowiredConstructor(Class<?> componentClass) {
-        int numAutowiredConstructors = 0;
-
-        for (Constructor<?> constructor : componentClass.getConstructors()) {
-            if (constructor.isAnnotationPresent(Autowired.class)) {
-                numAutowiredConstructors++;
-            }
-        }
-
-        return numAutowiredConstructors > 1;
+    private MethodCreatableComponent<?> createMethodCreatableComponent(String componentName, Method method, AbstractComponent<?> configurationComponent) {
+        MethodCreatableComponent<?> component = new MethodCreatableComponent<>(method.getReturnType(), componentName, method, configurationComponent);
+        nameComponentMap.put(componentName, component);
+        classComponentMap.put(method.getReturnType(), component);
+        return component;
     }
 
-    private void createComponentsWithDependencies(Map<String, List<String>> dependencyGraph,
-                                                  Map<String, List<String>> reverseDependencyGraph,
-                                                  Map<String, Constructor<?>> constructorMap,
-                                                  Map<String, List<String>> parametersMap) {
+    private void findDependencies() {
+        for (String componentName : nameComponentMap.keySet()) {
+            AbstractComponent<?> component = nameComponentMap.get(componentName);
+
+            component.findDependencies(nameComponentMap);
+        }
+    }
+
+    private void createComponentsWithDependencies() {
         Queue<String> queue = new LinkedList<>();
-        Set<String> unresolvedComponents = new HashSet<>(dependencyGraph.keySet());
+        Set<String> unresolvedComponents = new HashSet<>(nameComponentMap.keySet());
         Map<String, Integer> numDependenciesMap = new HashMap<>();
 
-        for (String componentName : dependencyGraph.keySet()) {
-            int numDependencies = dependencyGraph.get(componentName).size();
+        for (String componentName : nameComponentMap.keySet()) {
+            AbstractComponent<?> component = nameComponentMap.get(componentName);
 
-            numDependenciesMap.put(componentName, numDependencies);
+            numDependenciesMap.put(componentName, component.getNumDependencies());
 
-            if (numDependencies == 0) {
+            if (component.hasNoDependency()) {
                 queue.offer(componentName);
                 unresolvedComponents.remove(componentName);
 
-                Constructor<?> constructor = constructorMap.get(componentName);
-                components.put(componentName, createInstance(componentName, constructor));
+                component.create();
             }
         }
 
         while (!queue.isEmpty()) {
             String componentName = queue.poll();
+            AbstractComponent<?> component = nameComponentMap.get(componentName);
 
-            for (String dependentComponentName : reverseDependencyGraph.get(componentName)) {
+            for (Dependent dependency : component.getInjectedDependencies()) {
+                String dependentComponentName = dependency.getName();
+
                 numDependenciesMap.put(dependentComponentName, numDependenciesMap.get(dependentComponentName) - 1);
 
                 if (numDependenciesMap.get(dependentComponentName) == 0) {
                     queue.offer(dependentComponentName);
                     unresolvedComponents.remove(dependentComponentName);
 
-                    Constructor<?> constructor = constructorMap.get(dependentComponentName);
-                    List<String> parameters = parametersMap.get(dependentComponentName);
-                    components.put(dependentComponentName, createInstance(dependentComponentName, constructor, parameters.toArray(new String[0])));
+                    AbstractComponent<?> dependentComponent = nameComponentMap.get(dependentComponentName);
+                    dependentComponent.create();
                 }
             }
         }
@@ -219,35 +178,11 @@ public class DefaultApplicationContext implements ApplicationContext {
         }
     }
 
-    private Object createInstance(String componentName, Constructor<?> constructor, String... parameterComponentNames
-    ) {
-        Object[] parameters = new Object[parameterComponentNames.length];
-
-        for (int i = 0; i < parameterComponentNames.length; ++i) {
-            String parameterComponentName = parameterComponentNames[i];
-
-            if (components.containsKey(parameterComponentName)) {
-                parameters[i] = components.get(parameterComponentName);
-            } else {
-                throw new RuntimeException(String.format("Component %s has unresolved parameter %s.", componentName, parameterComponentName));
-            }
-        }
-
-        try {
-            return constructor.newInstance(parameters);
-        } catch (InstantiationException e) {
-            throw new RuntimeException(String.format("Component %s cannot be instantiated with %s.", componentName, constructor));
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(String.format("Application doesn't have access to %s of component %s.", constructor, componentName));
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(String.format("Application couldn't instantiate component %s with %s.", componentName, constructor));
-        }
-    }
-
     private void injectDependencies() {
-        for (String componentName : components.keySet()) {
-            Object component = components.get(componentName);
-            Class<?> componentClass = component.getClass();
+        for (String componentName : nameComponentMap.keySet()) {
+            AbstractComponent<?> component = nameComponentMap.get(componentName);
+            Object componentObject = component.getObject();
+            Class<?> componentClass = componentObject.getClass();
 
             for (Field field : componentClass.getDeclaredFields()) {
                 Autowired autowired = field.getAnnotation(Autowired.class);
@@ -256,17 +191,17 @@ public class DefaultApplicationContext implements ApplicationContext {
                     Autowired autowiredAnnotation = field.getAnnotation(Autowired.class);
                     String injectedComponentName = autowiredAnnotation.name().isEmpty() ? field.getType().getSimpleName() : autowiredAnnotation.name();
 
-                    if (components.containsKey(injectedComponentName)) {
-                        Object injectedComponent = components.get(injectedComponentName);
+                    if (nameComponentMap.containsKey(injectedComponentName)) {
+                        AbstractComponent<?> injectedComponent = nameComponentMap.get(injectedComponentName);
 
                         try {
                             field.setAccessible(true);
-                            field.set(component, injectedComponent);
+                            field.set(componentObject, injectedComponent.getObject());
                         } catch (IllegalAccessException e) {
-                            throw new RuntimeException(String.format("Component %s is not injectable.", injectedComponentName));
+                            throw new RuntimeException(String.format("AbstractComponent %s is not injectable.", injectedComponentName));
                         }
                     } else {
-                        throw new RuntimeException(String.format("Component %s doesn't exist.", injectedComponentName));
+                        throw new RuntimeException(String.format("AbstractComponent %s doesn't exist.", injectedComponentName));
                     }
                 }
             }

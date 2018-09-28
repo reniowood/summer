@@ -25,12 +25,10 @@ public class SummerMainApplicationTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void test_allClassesAnnotatedByComponentScannedByApplication() throws NoSuchFieldException, IllegalAccessException {
+    public void test_allClassesAnnotatedByComponentScannedByApplication() {
         ApplicationContext applicationContext = SummerMainApplication.run(com.jinhyuk.summer_core.test_application.have_components.SummerTestApplication.class);
 
-        Field componentsField = applicationContext.getClass().getDeclaredField("components");
-        componentsField.setAccessible(true);
-        Map<String, Object> components = (Map<String, Object>) componentsField.get(applicationContext);
+        Map<String, Object> components = applicationContext.getComponents();
 
         Assert.assertTrue(components.containsKey("A"));
         Assert.assertEquals(com.jinhyuk.summer_core.test_application.have_components.SummerTestApplication.A.class, components.get("A").getClass());
@@ -41,12 +39,10 @@ public class SummerMainApplicationTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void test_injectDependenciesByAutowireProperty() throws NoSuchFieldException, IllegalAccessException {
+    public void test_injectDependenciesByAutowireProperty() {
         ApplicationContext applicationContext = SummerMainApplication.run(com.jinhyuk.summer_core.test_application.have_dependencies.SummerTestApplication.class);
 
-        Field componentsField = applicationContext.getClass().getDeclaredField("components");
-        componentsField.setAccessible(true);
-        Map<String, Object> components = (Map<String, Object>) componentsField.get(applicationContext);
+        Map<String, Object> components = applicationContext.getComponents();
 
         Assert.assertTrue(components.containsKey("ComponentA"));
         ComponentA componentA = (ComponentA) components.get("ComponentA");
