@@ -17,11 +17,11 @@ public class DefaultApplicationContext implements ApplicationContext {
     private Map<String, AbstractComponent<?>> nameComponentMap = new HashMap<>();
     private Map<Class<?>, AbstractComponent<?>> classComponentMap = new HashMap<>();
 
-    private DefaultApplicationContext(Class applicationClass) {
+    private DefaultApplicationContext(Class<?> applicationClass) {
         this.basePackageName = applicationClass.getPackage().getName();
     }
 
-    public static ApplicationContext newContext(Class applicationClass) {
+    public static ApplicationContext newContext(Class<?> applicationClass) {
         DefaultApplicationContext applicationContext = new DefaultApplicationContext(applicationClass);
 
         applicationContext.scanComponents();

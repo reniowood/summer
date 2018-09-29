@@ -8,7 +8,6 @@ import com.jinhyuk.summer_core.test_application.have_dependencies.components.Com
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 
 public class SummerMainApplicationTest {
@@ -24,7 +23,6 @@ public class SummerMainApplicationTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void test_allClassesAnnotatedByComponentScannedByApplication() {
         ApplicationContext applicationContext = SummerMainApplication.run(com.jinhyuk.summer_core.test_application.have_components.SummerTestApplication.class);
 
@@ -38,7 +36,6 @@ public class SummerMainApplicationTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void test_injectDependenciesByAutowireProperty() {
         ApplicationContext applicationContext = SummerMainApplication.run(com.jinhyuk.summer_core.test_application.have_dependencies.SummerTestApplication.class);
 
