@@ -1,4 +1,4 @@
-package com.jinhyuk.summer.core.annotations;
+package com.jinhyuk.summer.core.annotations.test_annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -7,6 +7,5 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-@Component
-public @interface Configuration {
+public @interface BaseAnnotation {
 }

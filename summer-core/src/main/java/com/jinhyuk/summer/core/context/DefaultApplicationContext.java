@@ -1,10 +1,13 @@
 package com.jinhyuk.summer.core.context;
 
 import com.google.common.collect.ImmutableMap;
+import com.jinhyuk.summer.core.annotations.AnnotationUtils;
 import com.jinhyuk.summer.core.annotations.Autowired;
 import com.jinhyuk.summer.core.annotations.Component;
-import com.jinhyuk.summer.core.annotations.Configuration;
-import com.jinhyuk.summer.core.components.*;
+import com.jinhyuk.summer.core.components.AbstractComponent;
+import com.jinhyuk.summer.core.components.ConstructorCreatableComponent;
+import com.jinhyuk.summer.core.components.Dependent;
+import com.jinhyuk.summer.core.components.MethodCreatableComponent;
 import org.reflections.Reflections;
 
 import java.lang.reflect.Field;
@@ -64,7 +67,6 @@ public class DefaultApplicationContext implements ApplicationContext {
 
     private void scanComponents() {
         scanComponentAnnotatedClasses();
-        scanConfigurations();
         findDependencies();
         createComponentsWithDependencies();
     }
@@ -73,33 +75,23 @@ public class DefaultApplicationContext implements ApplicationContext {
         Reflections reflections = new Reflections(this.basePackageName);
 
         for (Class<?> componentClass : reflections.getTypesAnnotatedWith(Component.class)) {
-            String componentName = getComponentNameFromComponentAnnotation(componentClass);
+            if (!componentClass.isAnnotation()) {
+                String componentName = getComponentNameFromComponentAnnotation(componentClass);
 
-            if (nameComponentMap.containsKey(componentName)) {
-                throw new RuntimeException(String.format("Application has nameComponentMap with duplicate names: %s", componentName));
+                if (nameComponentMap.containsKey(componentName)) {
+                    throw new RuntimeException(String.format("Application has nameComponentMap with duplicate names: %s", componentName));
+                }
+
+                createConstructorCreatableComponent(componentName, componentClass);
+
+                AbstractComponent<?> configurationComponent = createConstructorCreatableComponent(componentName, componentClass);
+                scanBeans(componentClass, configurationComponent);
             }
-
-            createConstructorCreatableComponent(componentName, componentClass);
         }
     }
 
-    private void scanConfigurations() {
-        Reflections reflections = new Reflections(this.basePackageName);
-
-        for (Class<?> configurationClass : reflections.getTypesAnnotatedWith(Configuration.class)) {
-            String configurationName = configurationClass.getSimpleName();
-
-            if (nameComponentMap.containsKey(configurationName)) {
-                throw new RuntimeException(String.format("Application has nameComponentMap with duplicate names: %s", configurationName));
-            }
-
-            AbstractComponent<?> configurationComponent = createConstructorCreatableComponent(configurationName, configurationClass);
-            scanBeans(configurationClass, configurationComponent);
-        }
-    }
-
-    private void scanBeans(Class<?> configurationClass, AbstractComponent<?> configurationComponent) {
-        for (Method method : configurationClass.getMethods()) {
+    private void scanBeans(Class<?> componentClass, AbstractComponent<?> component) {
+        for (Method method : componentClass.getMethods()) {
             if (method.isAnnotationPresent(Component.class)) {
                 Component componentAnnotation = method.getAnnotation(Component.class);
 
@@ -109,7 +101,7 @@ public class DefaultApplicationContext implements ApplicationContext {
                     throw new RuntimeException(String.format("Application has nameComponentMap with duplicate names: %s", componentName));
                 }
 
-                createMethodCreatableComponent(componentName, method, configurationComponent);
+                createMethodCreatableComponent(componentName, method, component);
             }
         }
     }
@@ -209,7 +201,12 @@ public class DefaultApplicationContext implements ApplicationContext {
     }
 
     private String getComponentNameFromComponentAnnotation(Class<?> aClass) {
-        Component componentAnnotation = aClass.getAnnotation(Component.class);
-        return componentAnnotation.name().isEmpty() ? aClass.getSimpleName() : componentAnnotation.name();
+        Component component = AnnotationUtils.findAnnotation(aClass, Component.class);
+
+        if (component.name().isEmpty()) {
+            return aClass.getSimpleName();
+        } else {
+            return component.name();
+        }
     }
 }

@@ -1,4 +1,6 @@
-package com.jinhyuk.summer.core.annotations;
+package com.jinhyuk.summer.example.components;
+
+import com.jinhyuk.summer.core.annotations.Component;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -8,5 +10,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Component
-public @interface Configuration {
+public @interface Controller {
 }

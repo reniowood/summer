@@ -1,4 +1,4 @@
-package com.jinhyuk.summer.core.test_application.have_duplicate_components;
+package com.jinhyuk.summer.core.context.test_application.have_duplicate_components;
 
 import com.jinhyuk.summer.core.annotations.Component;
 
