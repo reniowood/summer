@@ -1,5 +1,5 @@
 rootProject.name = 'summer'
 
 include 'summer-core'
-include 'summer-mvc'
+include 'summer-web'
 include 'summer-example'
