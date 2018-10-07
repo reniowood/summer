@@ -1,6 +1,6 @@
-package com.jinhyuk.summer.core;
+package com.jinhyuk.summer.application;
 
-import com.jinhyuk.summer.core.annotations.SummerApplication;
+import com.jinhyuk.summer.application.annotations.SummerApplication;
 import com.jinhyuk.summer.core.context.ApplicationContext;
 import com.jinhyuk.summer.core.context.DefaultApplicationContext;
 

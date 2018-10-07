@@ -1,7 +1,7 @@
 package com.jinhyuk.summer.example;
 
-import com.jinhyuk.summer.core.SummerMainApplication;
-import com.jinhyuk.summer.core.annotations.SummerApplication;
+import com.jinhyuk.summer.application.SummerMainApplication;
+import com.jinhyuk.summer.application.annotations.SummerApplication;
 import com.jinhyuk.summer.core.context.ApplicationContext;
 import com.jinhyuk.summer.example.components.ComponentA;
 

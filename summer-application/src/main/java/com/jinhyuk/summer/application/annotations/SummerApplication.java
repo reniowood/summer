@@ -1,4 +1,4 @@
-package com.jinhyuk.summer.core.annotations;
+package com.jinhyuk.summer.application.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

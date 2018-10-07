@@ -1,30 +1,24 @@
-package com.jinhyuk.summer.core;
+package com.jinhyuk.summer.core.context;
 
-import com.jinhyuk.summer.core.context.ApplicationContext;
 import com.jinhyuk.summer.core.test_application.have_dependencies.components.ComponentA;
 import com.jinhyuk.summer.core.test_application.have_dependencies.components.ComponentB;
 import com.jinhyuk.summer.core.test_application.have_dependencies.components.ComponentC;
-import com.jinhyuk.summer.core.test_application.have_duplicate_components.SummerTestApplication;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Map;
 
-public class SummerMainApplicationTest {
+public class ApplicationContextTest {
 
-    @Test(expected = RuntimeException.class)
-    public void test_applicationClassShouldHaveSummerApplicationAnnotation() {
-        SummerMainApplication.run(com.jinhyuk.summer.core.test_application.without_annotation.SummerTestApplication.class);
-    }
 
     @Test(expected = RuntimeException.class)
     public void test_applicationShouldNotHaveComponentsHaveSameName() {
-        SummerMainApplication.run(SummerTestApplication.class);
+        DefaultApplicationContext.newContext(com.jinhyuk.summer.core.test_application.have_duplicate_components.SummerTestApplication.class);
     }
 
     @Test
     public void test_allClassesAnnotatedByComponentScannedByApplication() {
-        ApplicationContext applicationContext = SummerMainApplication.run(com.jinhyuk.summer.core.test_application.have_components.SummerTestApplication.class);
+        ApplicationContext applicationContext = DefaultApplicationContext.newContext(com.jinhyuk.summer.core.test_application.have_components.SummerTestApplication.class);
 
         Map<String, Object> components = applicationContext.getComponents();
 
@@ -37,7 +31,7 @@ public class SummerMainApplicationTest {
 
     @Test
     public void test_injectDependenciesByAutowireProperty() {
-        ApplicationContext applicationContext = SummerMainApplication.run(com.jinhyuk.summer.core.test_application.have_dependencies.SummerTestApplication.class);
+        ApplicationContext applicationContext = DefaultApplicationContext.newContext(com.jinhyuk.summer.core.test_application.have_dependencies.SummerTestApplication.class);
 
         Map<String, Object> components = applicationContext.getComponents();
 
@@ -59,17 +53,17 @@ public class SummerMainApplicationTest {
 
     @Test(expected = RuntimeException.class)
     public void test_thereShouldNotBeMutualDependencies() {
-        SummerMainApplication.run(com.jinhyuk.summer.core.test_application.have_mutual_dependencies.SummerTestApplication.class);
+        DefaultApplicationContext.newContext(com.jinhyuk.summer.core.test_application.have_mutual_dependencies.SummerTestApplication.class);
     }
 
     @Test(expected = RuntimeException.class)
     public void test_thereShouldNotBeDependencyCycles() {
-        SummerMainApplication.run(com.jinhyuk.summer.core.test_application.have_dependency_cycle.SummerTestApplication.class);
+        DefaultApplicationContext.newContext(com.jinhyuk.summer.core.test_application.have_dependency_cycle.SummerTestApplication.class);
     }
 
     @Test
     public void test_applicationCanGetComponentByClass() {
-        ApplicationContext applicationContext = SummerMainApplication.run(com.jinhyuk.summer.core.test_application.have_dependencies.SummerTestApplication.class);
+        ApplicationContext applicationContext = DefaultApplicationContext.newContext(com.jinhyuk.summer.core.test_application.have_dependencies.SummerTestApplication.class);
 
         ComponentA componentA = applicationContext.getComponent(ComponentA.class);
         Assert.assertNotNull(componentA);

@@ -1,4 +1,5 @@
 dependencies {
     compile project(':summer-core')
     compile project(':summer-web')
+    compile project(':summer-application')
 }
