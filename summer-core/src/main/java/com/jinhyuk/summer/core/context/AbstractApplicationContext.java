@@ -9,6 +9,7 @@ import com.jinhyuk.summer.core.components.ConstructorCreatableComponent;
 import com.jinhyuk.summer.core.components.Dependent;
 import com.jinhyuk.summer.core.components.MethodCreatableComponent;
 import org.reflections.Reflections;
+import org.reflections.scanners.SubTypesScanner;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -92,20 +93,22 @@ public abstract class AbstractApplicationContext implements ApplicationContext {
     }
 
     private void scanComponentAnnotatedClasses(String basePackageName) {
-        Reflections reflections = new Reflections(basePackageName);
+        Reflections reflections = new Reflections(basePackageName, new SubTypesScanner(false));
 
-        for (Class<?> componentClass : reflections.getTypesAnnotatedWith(Component.class)) {
-            if (!componentClass.isAnnotation()) {
-                String componentName = getComponentNameFromComponentAnnotation(componentClass);
+        for (Class<?> aClass : reflections.getSubTypesOf(Object.class)) {
+            if (AnnotationUtils.findAnnotation(aClass, Component.class) != null) {
+                if (!aClass.isAnnotation()) {
+                    String componentName = getComponentNameFromComponentAnnotation(aClass);
 
-                if (nameComponentMap.containsKey(componentName)) {
-                    throw new RuntimeException(String.format("Application has nameComponentMap with duplicate names: %s", componentName));
+                    if (nameComponentMap.containsKey(componentName)) {
+                        throw new RuntimeException(String.format("Application has nameComponentMap with duplicate names: %s", componentName));
+                    }
+
+                    createConstructorCreatableComponent(componentName, aClass);
+
+                    AbstractComponent<?> configurationComponent = createConstructorCreatableComponent(componentName, aClass);
+                    scanBeans(aClass, configurationComponent);
                 }
-
-                createConstructorCreatableComponent(componentName, componentClass);
-
-                AbstractComponent<?> configurationComponent = createConstructorCreatableComponent(componentName, componentClass);
-                scanBeans(componentClass, configurationComponent);
             }
         }
     }
